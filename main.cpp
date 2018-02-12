@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
-#include <mutex>
 #include <thread>
 #include <sys/sysinfo.h>
 #include <unistd.h>
@@ -18,7 +17,7 @@ void stress_cpu(int percent, double timeout = 1.0){
     auto start = std::chrono::high_resolution_clock::now();
     auto last_checkpoint = start;
     volatile int found_primes = 0; // Don't optimize away this.
-    while(1) {
+    while(true) {
 
         // Break if we reached timeout
         auto end = std::chrono::high_resolution_clock::now();
@@ -60,7 +59,7 @@ struct Settings{
 Settings parse_args(int argc, char** argv){
     Settings settings{};
     // Process arguments
-    struct sysinfo si;
+    struct sysinfo si{};
     sysinfo (&si);
     settings.totalram = si.totalram;
 
@@ -117,13 +116,12 @@ int main(int argc, char** argv) {
     }
 
     // Screw memory
-    unsigned char *result;
+    volatile unsigned char *result;
     auto s = (size_t) (settings.memory<<20);
     result = (unsigned char*) calloc(s, sizeof(char));
 
     // Screw cpu's
     int num_threads = std::min(settings.threads, settings.available_threads);
-    // A mutex ensures orderly access to std::cout from multiple threads.
     std::vector<std::thread> m_threads(num_threads);
     for (unsigned i = 0; i < num_threads; ++i) {
         m_threads[i] = std::thread(stress_cpu, settings.percent, settings.timeout);
